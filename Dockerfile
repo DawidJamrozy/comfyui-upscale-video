@@ -6,6 +6,7 @@ FROM runpod/worker-comfyui:5.8.4-base
 ARG HF_TOKEN=""
 
 # install custom nodes into comfyui
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 RUN comfy node install --exit-on-fail comfyui-videohelpersuite@1.7.9 --mode remote || (echo "WARN: comfyui-videohelpersuite@1.7.9 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail comfyui-videohelpersuite --mode remote)
 RUN comfy node install --exit-on-fail seedvr2_videoupscaler@2.5.22 || (echo "WARN: seedvr2_videoupscaler@2.5.22 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail seedvr2_videoupscaler)
 RUN pip install https://huggingface.co/Kijai/PrecompiledWheels/resolve/main/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl && \
