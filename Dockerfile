@@ -7,14 +7,24 @@ ARG HF_TOKEN=""
 
 # install custom nodes into comfyui
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+ENV CC=/usr/bin/gcc
+RUN which gcc && which cc || echo "BRAK cc!"
+
 RUN comfy node install --exit-on-fail comfyui-videohelpersuite@1.7.9 --mode remote || (echo "WARN: comfyui-videohelpersuite@1.7.9 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail comfyui-videohelpersuite --mode remote)
 RUN comfy node install --exit-on-fail seedvr2_videoupscaler@2.5.22 || (echo "WARN: seedvr2_videoupscaler@2.5.22 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail seedvr2_videoupscaler)
+
 RUN pip install https://huggingface.co/Kijai/PrecompiledWheels/resolve/main/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl && \
     python -c "import sageattention; print('SageAttention OK')"
 
 # download models into comfyui
-RUN BACKOFFS="10 20 30 60 90" && for i in 1 2 3 4 5; do HF_TOKEN=$HF_TOKEN comfy model download --url 'https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/ema_vae_fp16.safetensors' --relative-path models/Unknown --filename 'ema_vae_fp16.safetensors' && break; if [ $i -eq 5 ]; then echo "model-download failed after 5 attempts" >&2; exit 1; fi; SLEEP=$(echo $BACKOFFS | cut -d ' ' -f $i) && echo "model-download attempt $i failed; retrying in $SLEEP seconds" >&2; sleep $SLEEP; done
-RUN BACKOFFS="10 20 30 60 90" && for i in 1 2 3 4 5; do HF_TOKEN=$HF_TOKEN comfy model download --url 'https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_3b_fp8_e4m3fn.safetensors' --relative-path models/Unknown --filename 'seedvr2_ema_3b_fp8_e4m3fn.safetensors' && break; if [ $i -eq 5 ]; then echo "model-download failed after 5 attempts" >&2; exit 1; fi; SLEEP=$(echo $BACKOFFS | cut -d ' ' -f $i) && echo "model-download attempt $i failed; retrying in $SLEEP seconds" >&2; sleep $SLEEP; done
+# UWAGA: każdy blok poniżej ma:
+#   1) "rm -f <plik>" na początku każdej iteracji retry -- usuwa ewentualny
+#      obcięty plik z poprzedniej nieudanej próby, zamiast ufać że "file already
+#      exists" oznacza kompletny, poprawny plik.
+#   2) weryfikację rozmiaru na końcu ("test ... -gt ...") -- jeśli finalny plik
+#      jest podejrzanie mały (typowy objaw przerwanego / uciętego pobierania),
+#      build sam się wywala z czytelnym błędem zamiast dawać fałszywy sukces.
+
 RUN BACKOFFS="60 300 900 1800 3600" && for i in 1 2 3 4 5; do \
     rm -f /comfyui/models/SEEDVR2/seedvr2_ema_3b_fp8_e4m3fn.safetensors; \
     comfy model download --url 'https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_3b_fp8_e4m3fn.safetensors' --relative-path models/SEEDVR2 --filename 'seedvr2_ema_3b_fp8_e4m3fn.safetensors' && break; \
