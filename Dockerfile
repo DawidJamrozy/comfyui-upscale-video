@@ -8,6 +8,8 @@ ARG HF_TOKEN=""
 # install custom nodes into comfyui
 RUN comfy node install --exit-on-fail comfyui-videohelpersuite@1.7.9 --mode remote || (echo "WARN: comfyui-videohelpersuite@1.7.9 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail comfyui-videohelpersuite --mode remote)
 RUN comfy node install --exit-on-fail seedvr2_videoupscaler@2.5.22 || (echo "WARN: seedvr2_videoupscaler@2.5.22 unavailable in registry, falling back to latest" >&2 && comfy node install --exit-on-fail seedvr2_videoupscaler)
+RUN pip install https://huggingface.co/Kijai/PrecompiledWheels/resolve/main/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl && \
+    python -c "import sageattention; print('SageAttention OK')"
 
 # download models into comfyui
 RUN BACKOFFS="10 20 30 60 90" && for i in 1 2 3 4 5; do HF_TOKEN=$HF_TOKEN comfy model download --url 'https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/ema_vae_fp16.safetensors' --relative-path models/Unknown --filename 'ema_vae_fp16.safetensors' && break; if [ $i -eq 5 ]; then echo "model-download failed after 5 attempts" >&2; exit 1; fi; SLEEP=$(echo $BACKOFFS | cut -d ' ' -f $i) && echo "model-download attempt $i failed; retrying in $SLEEP seconds" >&2; sleep $SLEEP; done
